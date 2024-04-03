@@ -1,0 +1,16 @@
+# Виртуальное окружение
+venv/
+
+# Скомпилированные файлы
+__pycache__/
+
+# Переменные окружения
+.env
+
+# Сервер разработки Django
+db.sqlite3
+
+# Windows
+Thumbs.db
+Desktop.ini
+
