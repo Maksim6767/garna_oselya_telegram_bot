@@ -35,6 +35,20 @@ def create_tables():
     conn.close()
 
 
+# Добавление новой таблицы для черного списка в базу данных
+def create_blacklist_table():
+    conn = sqlite3.connect("user_data.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """CREATE TABLE IF NOT EXISTS blacklist (
+                        user_id INTEGER PRIMARY KEY
+                    )"""
+    )
+
+    conn.commit()
+    conn.close()
+
+
 def get_num_registered_users():
     conn = sqlite3.connect("user_data.db")
     cursor = conn.cursor()

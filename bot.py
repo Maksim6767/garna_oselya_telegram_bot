@@ -8,17 +8,13 @@ from telebot.types import ReplyKeyboardMarkup, KeyboardButton, Contact
 from decouple import config
 from database import (
     create_tables,
+    create_blacklist_table,
     get_num_registered_users,
     get_all_users_info,
     get_column_names,
 )
-from handlers import (
-    # start,
-    help_command,
-    # handle_text,
-    handle_get_registered_users,
-    send_message_to_users,
-)
+from handlers import help_command, handle_get_registered_users
+
 
 # Загрузка переменных окружения из файла .env
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN")
@@ -29,6 +25,115 @@ bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 print(bot)
 
 create_tables()
+create_blacklist_table()
+
+
+# # Команда для добавления пользователя в черный список
+@bot.message_handler(commands=["blacklist_user"])
+def blacklist_user(message):
+    admin_id = message.chat.id
+    try:
+        # Создаем объект клавиатуры
+        markup = types.ForceReply(selective=False)
+        # Отправляем сообщение с просьбой ввести ID пользователя
+        bot.send_message(
+            admin_id,
+            "Введіть ID користувача для додавання в чорний список:",
+            reply_markup=markup,
+        )
+    except Exception as e:
+        bot.send_message(admin_id, f"Ошибка: {e}")
+
+
+# Обработчик ответа на запрос ID пользователя
+@bot.message_handler(
+    func=lambda message: message.reply_to_message is not None
+    and message.reply_to_message.text
+    == "Введіть ID користувача для додавання в чорний список:",
+    content_types=["text"],
+)
+def process_user_id(message):
+    admin_id = message.chat.id
+    try:
+        user_id_to_blacklist = message.text  # Получаем ID пользователя из ответа
+        # Проверяем, был ли передан user_id
+        if user_id_to_blacklist:
+            conn = sqlite3.connect("user_data.db")
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO blacklist (user_id) VALUES (?)", (user_id_to_blacklist,)
+            )
+            conn.commit()
+            conn.close()
+            bot.send_message(
+                admin_id,
+                f"Користувача з ID {user_id_to_blacklist} додано в чорний список.",
+            )
+        else:
+            bot.send_message(
+                admin_id, "Не вказано ID користувача для додавання в чорний список."
+            )
+    except Exception as e:
+        bot.send_message(
+            admin_id,
+            f"Користувач з ID {user_id_to_blacklist} вже існує в чорному списку: {e}",
+        )
+
+
+# Команда для удаления пользователя из черного списка
+@bot.message_handler(commands=["unblacklist_user"])
+def unblacklist_user(message):
+    admin_id = message.chat.id
+    try:
+        # Создаем объект клавиатуры
+        markup = types.ForceReply(selective=False)
+        # Отправляем сообщение с просьбой ввести ID пользователя
+        bot.send_message(
+            admin_id,
+            "Введіть ID користувача для видалення з чорного списка:",
+            reply_markup=markup,
+        )
+    except Exception as e:
+        bot.send_message(admin_id, f"Помилка: {e}")
+
+
+# Обработчик ответа на запрос ID пользователя для удаления из черного списка
+@bot.message_handler(
+    func=lambda message: message.reply_to_message is not None
+    and message.reply_to_message.text
+    == "Введіть ID користувача для видалення з чорного списка:",
+    content_types=["text"],
+)
+def process_unblacklist_user(message):
+    admin_id = message.chat.id
+    try:
+        user_id_to_unblacklist = message.text  # Получаем ID пользователя из ответа
+        # Удаляем пользователя из черного списка
+        conn = sqlite3.connect("user_data.db")
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM blacklist WHERE user_id=?", (user_id_to_unblacklist,)
+        )
+        conn.commit()
+        conn.close()
+        bot.send_message(
+            admin_id,
+            f"Користувача з ID {user_id_to_unblacklist} видалено з чорного списка.",
+        )
+    except Exception as e:
+        bot.send_message(
+            admin_id, f"Помилка при видаленні користувача з чорного списка: {e}"
+        )
+
+
+# Функция для проверки, находится ли пользователь в черном списке
+def is_user_blacklisted(user_id):
+    conn = sqlite3.connect("user_data.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM blacklist WHERE user_id=?", (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result is not None
 
 
 @bot.message_handler(commands=["help"])
@@ -428,6 +533,14 @@ def callback_worker(call):
             )
             start(call.message)
         elif call.data == "consultation":
+            if is_user_blacklisted(
+                user_id
+            ):  # Проверяем, не находится ли пользователь в черном списке
+                bot.send_message(
+                    user_id,
+                    "Ви не можете отримати консультацію.",
+                )
+                return
             bot.send_message(
                 user_id,
                 "Тепер відправте свій контактний номер телефона, натиснув нижче кнопку 'Відправити мій контакт'.",
