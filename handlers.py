@@ -71,6 +71,7 @@ def help_command(message):
         help_text += "/get_all_users - Получити всіх зареєстрованих користувачів\n"
         help_text += "/blacklist_user - Додати користувача в чорний список\n"
         help_text += "/unblacklist_user - Видалити користувача з чорного списка\n"
+        help_text += "/blacklisted_users - Отримати всіх користувачів з чорного списка\n"
         help_text += "/help - Вивести цей список команд"
 
         bot.send_message(user_id, help_text)

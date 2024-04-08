@@ -136,6 +136,25 @@ def is_user_blacklisted(user_id):
     return result is not None
 
 
+@bot.message_handler(commands=["blacklisted_users"])
+def get_blacklisted_users(message):
+    admin_id = message.chat.id
+    try:
+        conn = sqlite3.connect("user_data.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id FROM blacklist")
+        blacklisted_users = cursor.fetchall()
+        conn.close()
+        
+        if blacklisted_users:
+            users_list = "\n".join(str(user[0]) for user in blacklisted_users)
+            bot.send_message(admin_id, f"Список користувачів в чорному списку:\n{users_list}")
+        else:
+            bot.send_message(admin_id, "Чорний список пустий.")
+    except sqlite3.Error as e:
+        bot.send_message(admin_id, f"Помилка при отриманні списка користувачів чорного списка: {e}")
+
+
 @bot.message_handler(commands=["help"])
 def handle_help_command(message):
     help_command(message)
@@ -635,9 +654,9 @@ def start_consultation(message):
 
         bot.send_message(
             chat_id,
-            f"Користувач {name} {surname} запрошує консультацію. Його контактний номер: {decoded_contact}\n\nПовідомлення:\n\n{consultation_message}",
+            f"Користувач {name} {surname} з ID {user_id} запрошує консультацію. Його контактний номер: {decoded_contact}\n\nПовідомлення:\n\n{consultation_message}",
         )
-        bot.send_message(user_id, "✅ Ваше повідомлення відправлено на консультацію.")
+        bot.send_message(user_id, "✅ Ваше повідомлення відправлено на консультацію.\nНаш адміністратор зв'яжеться з Вами.")
 
         bot.send_message(
             user_id,
