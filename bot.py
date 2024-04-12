@@ -145,14 +145,18 @@ def get_blacklisted_users(message):
         cursor.execute("SELECT user_id FROM blacklist")
         blacklisted_users = cursor.fetchall()
         conn.close()
-        
+
         if blacklisted_users:
             users_list = "\n".join(str(user[0]) for user in blacklisted_users)
-            bot.send_message(admin_id, f"Список користувачів в чорному списку:\n{users_list}")
+            bot.send_message(
+                admin_id, f"Список користувачів в чорному списку:\n{users_list}"
+            )
         else:
             bot.send_message(admin_id, "Чорний список пустий.")
     except sqlite3.Error as e:
-        bot.send_message(admin_id, f"Помилка при отриманні списка користувачів чорного списка: {e}")
+        bot.send_message(
+            admin_id, f"Помилка при отриманні списка користувачів чорного списка: {e}"
+        )
 
 
 @bot.message_handler(commands=["help"])
@@ -192,7 +196,9 @@ def process_send_message(message):
     user_ids = cursor.fetchall()
 
     for user_id in user_ids:
-        bot.send_message(user_id[0], "Повідомлення від адміністратора: " + message_text)
+        bot.send_message(
+            user_id[0], "Повідомлення від адміністратора:\n " + message_text
+        )
 
     conn.close()
 
@@ -656,7 +662,10 @@ def start_consultation(message):
             chat_id,
             f"Користувач {name} {surname} з ID {user_id} запрошує консультацію. Його контактний номер: {decoded_contact}\n\nПовідомлення:\n\n{consultation_message}",
         )
-        bot.send_message(user_id, "✅ Ваше повідомлення відправлено на консультацію.\nНаш адміністратор зв'яжеться з Вами.")
+        bot.send_message(
+            user_id,
+            "✅ Ваше повідомлення відправлено на консультацію.\nНаш адміністратор зв'яжеться з Вами.",
+        )
 
         bot.send_message(
             user_id,

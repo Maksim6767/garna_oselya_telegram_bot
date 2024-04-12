@@ -35,7 +35,4 @@
 
 МАКСИМ ЖОГЛИК
 
-<!-- telebot
-python-telegram-bot==20.6
-telegram
-pyTelegramBotAPI==4.14.0 -->
+
