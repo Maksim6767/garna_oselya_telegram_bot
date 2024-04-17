@@ -7,12 +7,14 @@ from decouple import config
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN")
 ADMIN_MY_ID = config("ADMIN_MY_ID")
 ADMIN_USER_ID = config("ADMIN_USER_ID")
+DB_CONNECTION_URL = config("DB_CONNECTION_URL")
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 
 def create_tables():
-    conn = sqlite3.connect("user_data.db")
+    
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -37,7 +39,8 @@ def create_tables():
 
 # Добавление новой таблицы для черного списка в базу данных
 def create_blacklist_table():
-    conn = sqlite3.connect("user_data.db")
+    
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
     cursor.execute(
         """CREATE TABLE IF NOT EXISTS blacklist (
@@ -50,7 +53,8 @@ def create_blacklist_table():
 
 
 def get_num_registered_users():
-    conn = sqlite3.connect("user_data.db")
+    
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute("SELECT id FROM users")
@@ -64,7 +68,8 @@ def get_num_registered_users():
 
 
 def get_user_ids():
-    conn = sqlite3.connect("user_data.db")
+    
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute("SELECT user_id FROM users")
@@ -76,7 +81,8 @@ def get_user_ids():
 
 
 def get_all_users_info():
-    conn = sqlite3.connect("user_data.db")
+    
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM users")
@@ -88,7 +94,8 @@ def get_all_users_info():
 
 
 def get_column_names():
-    conn = sqlite3.connect("user_data.db")
+    
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute("PRAGMA table_info(users)")
