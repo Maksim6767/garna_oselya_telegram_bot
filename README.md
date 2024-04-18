@@ -32,13 +32,19 @@
 - `/blacklisted_users`: Отримати всіх користувачів з чорного списка
 
 ## Запуск через докер
+
 - `docker-compose up -d --build` - запустить
 - `docker-compose down` - опустить
 - `docker-compose down -v` - опустить и очистить бд
 
+## Как деплоить на сервер изменения в проекте
+
+- `ssh root@65.109.28.146` - вставить эту ссылку в терминал
+- `cd Maksym` - перейти в папку Maksym
+- `cd garna_oselya_telegram_bot` - перейти в проект
+- `git pull` - стянуть изменения
+- `docker-compose up -d --build` - запустить проект на сервере
 
 ## Автор
 
 МАКСИМ ЖОГЛИК
-
-
