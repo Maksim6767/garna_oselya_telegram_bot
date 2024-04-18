@@ -69,7 +69,7 @@ def process_user_id(message):
             conn.close()
             bot.send_message(
                 admin_id,
-                f"Користувача з ID {user_id_to_blacklist} додано в чорний список.",
+                f"Користувача з ID {user_id_to_blacklist} додано в чорний список!",
             )
         else:
             bot.send_message(
