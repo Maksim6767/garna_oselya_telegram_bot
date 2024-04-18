@@ -14,4 +14,7 @@ db.sqlite3
 Thumbs.db
 Desktop.ini
 *.db
+.idea
+.vscode
+
 
