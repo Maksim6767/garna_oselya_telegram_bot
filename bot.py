@@ -20,6 +20,8 @@ from handlers import help_command, handle_get_registered_users
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN")
 ADMIN_MY_ID = config("ADMIN_MY_ID")
 ADMIN_USER_ID = config("ADMIN_USER_ID")
+DB_CONNECTION_URL = config("DB_CONNECTION_URL")
+
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 print(bot)
@@ -58,7 +60,7 @@ def process_user_id(message):
         user_id_to_blacklist = message.text  # Получаем ID пользователя из ответа
         # Проверяем, был ли передан user_id
         if user_id_to_blacklist:
-            conn = sqlite3.connect("user_data.db")
+            conn = sqlite3.connect(DB_CONNECTION_URL)
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO blacklist (user_id) VALUES (?)", (user_id_to_blacklist,)
@@ -109,7 +111,7 @@ def process_unblacklist_user(message):
     try:
         user_id_to_unblacklist = message.text  # Получаем ID пользователя из ответа
         # Удаляем пользователя из черного списка
-        conn = sqlite3.connect("user_data.db")
+        conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
         cursor.execute(
             "DELETE FROM blacklist WHERE user_id=?", (user_id_to_unblacklist,)
@@ -128,7 +130,7 @@ def process_unblacklist_user(message):
 
 # Функция для проверки, находится ли пользователь в черном списке
 def is_user_blacklisted(user_id):
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM blacklist WHERE user_id=?", (user_id,))
     result = cursor.fetchone()
@@ -140,7 +142,7 @@ def is_user_blacklisted(user_id):
 def get_blacklisted_users(message):
     admin_id = message.chat.id
     try:
-        conn = sqlite3.connect("user_data.db")
+        conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
         cursor.execute("SELECT user_id FROM blacklist")
         blacklisted_users = cursor.fetchall()
@@ -189,7 +191,7 @@ def process_send_message(message):
     admin_user_id = message.chat.id
     message_text = message.text
 
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute("SELECT user_id FROM users")
@@ -213,7 +215,7 @@ def get_send_message_command(message):
 @bot.message_handler(commands=["start"])
 def start(message):
     try:
-        conn = sqlite3.connect("user_data.db")
+        conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
 
         user_id = message.chat.id
@@ -271,7 +273,7 @@ def start(message):
 
 
 def get_name(message):
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     if message.text.isalpha() and len(message.text) >= 2:
@@ -316,7 +318,7 @@ def get_name(message):
 
 
 def get_surname(message, name):
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     if message.text.isalpha() and len(message.text) >= 2:
@@ -357,7 +359,7 @@ def declination_of_years(age):
 
 def get_age(message, name, surname):
     try:
-        conn = sqlite3.connect("user_data.db")
+        conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
 
         age = int(message.text)
@@ -387,7 +389,7 @@ def get_age(message, name, surname):
 def get_city(message, name, surname, age):
     global city
 
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     city = " ".join(message.text.strip().title().split())
@@ -416,7 +418,7 @@ def get_city(message, name, surname, age):
 def get_district(message, name, surname, age, city):
     global district
 
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     district = " ".join(message.text.strip().title().split())
@@ -448,7 +450,7 @@ def get_address(
     message, name, surname, age, city, district, awaiting_confirmation=False
 ):
     if message is not None:
-        conn = sqlite3.connect("user_data.db")
+        conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
 
         user_id = message.chat.id
@@ -515,7 +517,7 @@ def callback_worker(call):
     user_id = call.message.chat.id
     global registration_status
 
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -546,7 +548,7 @@ def callback_worker(call):
                 True  # Установка статуса регистрации пользователя
             )
         elif call.data == "no" and not registration_status.get(user_id, False):
-            conn = sqlite3.connect("user_data.db")
+            conn = sqlite3.connect(DB_CONNECTION_URL)
             cursor = conn.cursor()
             cursor.execute("DELETE FROM users WHERE user_id=?", (user_id,))
             conn.commit()
@@ -596,7 +598,7 @@ def get_contact(message):
     if message.contact is not None and message.contact.phone_number:
         user_contact = base64.b64encode(message.contact.phone_number.encode()).decode()
 
-        conn = sqlite3.connect("user_data.db")
+        conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
 
         cursor.execute(
@@ -636,7 +638,7 @@ def get_contact(message):
 def start_consultation(message):
     user_id = message.from_user.id
 
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -682,7 +684,7 @@ def start_consultation(message):
 
 # Функция для получения информации о всех пользователях
 def get_all_users_info():
-    conn = sqlite3.connect("user_data.db")
+    conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM users")
@@ -733,4 +735,5 @@ def handle_get_all_users(message):
 
 
 if __name__ == "__main__":
+    print("BOT STARTED")
     bot.polling(non_stop=True, interval=0)

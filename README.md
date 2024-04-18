@@ -31,6 +31,12 @@
 - `/unblacklist_user`: Удалить пользователя из черного списка
 - `/blacklisted_users`: Отримати всіх користувачів з чорного списка
 
+## Запуск через докер
+- `docker-compose up -d --build` - запустить
+- `docker-compose down` - опустить
+- `docker-compose down -v` - опустить и очистить бд
+
+
 ## Автор
 
 МАКСИМ ЖОГЛИК

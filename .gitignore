@@ -13,4 +13,8 @@ db.sqlite3
 # Windows
 Thumbs.db
 Desktop.ini
+*.db
+.idea
+.vscode
+
 
