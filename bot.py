@@ -13,7 +13,17 @@ from database import (
     get_all_users_info,
     get_column_names,
 )
-from handlers import help_command, handle_get_registered_users
+from handlers import (
+    handle_get_registered_users,
+    handle_get_all_users,
+    handle_send_message_to_users,
+    process_send_message,
+    handle_blacklist_user,
+    handle_unblacklist_user,
+    handle_get_blacklisted_users,
+    help_command,
+    handle_start,
+)
 
 
 # Загрузка переменных окружения из файла .env
@@ -30,21 +40,33 @@ create_tables()
 create_blacklist_table()
 
 
-# # Команда для добавления пользователя в черный список
-@bot.message_handler(commands=["blacklist_user"])
-def blacklist_user(message):
-    admin_id = message.chat.id
-    try:
-        # Создаем объект клавиатуры
-        markup = types.ForceReply(selective=False)
-        # Отправляем сообщение с просьбой ввести ID пользователя
-        bot.send_message(
-            admin_id,
-            "Введіть ID користувача для додавання в чорний список:",
-            reply_markup=markup,
-        )
-    except Exception as e:
-        bot.send_message(admin_id, f"Ошибка: {e}")
+# Функция для получения информации о всех пользователях
+def get_all_users_info():
+    conn = sqlite3.connect(DB_CONNECTION_URL)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users")
+    all_users_info = cursor.fetchall()
+
+    conn.commit()
+    conn.close()
+
+    return all_users_info
+
+
+# Функция отправки сообщения с клавиатурой
+def send_message_with_keyboard(user_id):
+    markup = types.ReplyKeyboardMarkup(
+        row_width=1, resize_keyboard=True, one_time_keyboard=False
+    )
+    consultation_button = types.KeyboardButton("🔍 Консультація")
+    markup.add(consultation_button)
+    bot.send_message(
+        user_id,
+        "Для отримання консультації натисніть, будь ласка, кнопку 'Консультація':",
+        reply_markup=markup,
+    )
+    return markup
 
 
 # Обработчик ответа на запрос ID пользователя
@@ -62,11 +84,14 @@ def process_user_id(message):
         if user_id_to_blacklist:
             conn = sqlite3.connect(DB_CONNECTION_URL)
             cursor = conn.cursor()
+
             cursor.execute(
                 "INSERT INTO blacklist (user_id) VALUES (?)", (user_id_to_blacklist,)
             )
+
             conn.commit()
             conn.close()
+
             bot.send_message(
                 admin_id,
                 f"Користувача з ID {user_id_to_blacklist} додано в чорний список!",
@@ -80,23 +105,6 @@ def process_user_id(message):
             admin_id,
             f"Користувач з ID {user_id_to_blacklist} вже існує в чорному списку: {e}",
         )
-
-
-# Команда для удаления пользователя из черного списка
-@bot.message_handler(commands=["unblacklist_user"])
-def unblacklist_user(message):
-    admin_id = message.chat.id
-    try:
-        # Создаем объект клавиатуры
-        markup = types.ForceReply(selective=False)
-        # Отправляем сообщение с просьбой ввести ID пользователя
-        bot.send_message(
-            admin_id,
-            "Введіть ID користувача для видалення з чорного списка:",
-            reply_markup=markup,
-        )
-    except Exception as e:
-        bot.send_message(admin_id, f"Помилка: {e}")
 
 
 # Обработчик ответа на запрос ID пользователя для удаления из черного списка
@@ -113,11 +121,14 @@ def process_unblacklist_user(message):
         # Удаляем пользователя из черного списка
         conn = sqlite3.connect(DB_CONNECTION_URL)
         cursor = conn.cursor()
+
         cursor.execute(
             "DELETE FROM blacklist WHERE user_id=?", (user_id_to_unblacklist,)
         )
+
         conn.commit()
         conn.close()
+
         bot.send_message(
             admin_id,
             f"Користувача з ID {user_id_to_unblacklist} видалено з чорного списка.",
@@ -132,151 +143,82 @@ def process_unblacklist_user(message):
 def is_user_blacklisted(user_id):
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
+
     cursor.execute("SELECT * FROM blacklist WHERE user_id=?", (user_id,))
     result = cursor.fetchone()
+
     conn.close()
     return result is not None
-
-
-@bot.message_handler(commands=["blacklisted_users"])
-def get_blacklisted_users(message):
-    admin_id = message.chat.id
-    try:
-        conn = sqlite3.connect(DB_CONNECTION_URL)
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id FROM blacklist")
-        blacklisted_users = cursor.fetchall()
-        conn.close()
-
-        if blacklisted_users:
-            users_list = "\n".join(str(user[0]) for user in blacklisted_users)
-            bot.send_message(
-                admin_id, f"Список користувачів в чорному списку:\n{users_list}"
-            )
-        else:
-            bot.send_message(admin_id, "Чорний список пустий.")
-    except sqlite3.Error as e:
-        bot.send_message(
-            admin_id, f"Помилка при отриманні списка користувачів чорного списка: {e}"
-        )
-
-
-@bot.message_handler(commands=["help"])
-def handle_help_command(message):
-    help_command(message)
 
 
 # Определение обработчика команды get_registered_users
 @bot.message_handler(commands=["get_registered_users"])
 def get_registered_users(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
     handle_get_registered_users(message)
 
 
-@bot.message_handler(commands=["send_message"])
-def send_message_to_users(message):
-    user_id = message.chat.id
-
-    if str(user_id) == ADMIN_MY_ID:
-        bot.send_message(
-            user_id,
-            "Введіть повідомлення для розсилки:",
-        )
-
-        bot.register_next_step_handler(message, process_send_message)
-    else:
-        bot.send_message(user_id, "У Вас немає доступу до цієї команди.")
-
-
-def process_send_message(message):
-    admin_user_id = message.chat.id
-    message_text = message.text
-
-    conn = sqlite3.connect(DB_CONNECTION_URL)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT user_id FROM users")
-    user_ids = cursor.fetchall()
-
-    for user_id in user_ids:
-        bot.send_message(
-            user_id[0], "Повідомлення від адміністратора:\n " + message_text
-        )
-
-    conn.close()
-
-    bot.send_message(admin_user_id, f"Розсилка успішно завершена!")
-
-
+# Определение обработчика команды send_message
 @bot.message_handler(commands=["send_message"])
 def get_send_message_command(message):
-    send_message_to_users(bot, message.chat.id)
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    handle_send_message_to_users(bot, message.chat.id)
 
 
+# Определение обработчика команды get_all_users
+@bot.message_handler(commands=["get_all_users"])
+def get_all_users(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    handle_get_all_users(message)
+
+
+# Определение обработчика команды blacklist_user
+@bot.message_handler(commands=["blacklist_user"])
+def blacklist_user(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    handle_blacklist_user(message)
+
+
+# Определение обработчика команды unblacklist_user
+@bot.message_handler(commands=["unblacklist_user"])
+def unblacklist_user(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    handle_unblacklist_user(message)
+
+
+# Определение обработчика команды blacklisted_users
+@bot.message_handler(commands=["blacklisted_users"])
+def get_blacklisted_users(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    handle_get_blacklisted_users(message)
+
+
+# Определение обработчика команды help
+@bot.message_handler(commands=["help"])
+def handle_help_command(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    help_command(message)
+
+
+# Определение обработчика команды start
 @bot.message_handler(commands=["start"])
 def start(message):
-    try:
-        conn = sqlite3.connect(DB_CONNECTION_URL)
-        cursor = conn.cursor()
-
-        user_id = message.chat.id
-        cursor.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
-        existing_user = cursor.fetchone()
-        if existing_user:
-            print(existing_user)
-            if (
-                existing_user.first_name
-                and existing_user.last_name
-                and existing_user.age
-                and existing_user.city
-                and existing_user.district
-                and existing_user.address
-            ):
-                markup = types.InlineKeyboardMarkup()
-                consultation_button = types.InlineKeyboardButton(
-                    "Консультація", callback_data="consultation"
-                )
-                markup.add(consultation_button)
-                bot.send_message(
-                    user_id,
-                    "Для отримання консультації натисніть кнопку 'Консультація'.",
-                    reply_markup=markup,
-                )
-            else:
-                inline_keyboard = types.InlineKeyboardMarkup()
-            registration_button = types.InlineKeyboardButton(
-                "Зареєструватися", callback_data="registration"
-            )
-            inline_keyboard.add(registration_button)
-
-            bot.send_message(
-                message.chat.id,
-                "Привіт?\nЯ Тelegram бот Garna Oselya і я допоможу Вам отримати інформацію з питань відключення, ремонту, технічного обслуговування інженерних мереж опалення, холодного та гарячого водопостачання, водовідведення, електропостачання тощо.\nЩоб отримати консультацію від фахівців, натисніть нижче кнопку 'Зареєструватися'.",
-                reply_markup=inline_keyboard,
-            )
-
-            return
-
-        else:
-            inline_keyboard = types.InlineKeyboardMarkup()
-            registration_button = types.InlineKeyboardButton(
-                "Зареєструватися", callback_data="registration"
-            )
-            inline_keyboard.add(registration_button)
-
-            bot.send_message(
-                message.chat.id,
-                "Привіт!\nЯ Тelegram бот Garna Oselya і я допоможу Вам отримати інформацію з питань відключення, ремонту, технічного обслуговування інженерних мереж опалення, холодного та гарячого водопостачання, водовідведення, електропостачання тощо.\nЩоб отримати консультацію від фахівців, натисніть нижче кнопку 'Зареєструватися'.",
-                reply_markup=inline_keyboard,
-            )
-    except Exception as e:
-        print(f"Помилка при обробці команди /start: {e}")
+    handle_start(message)
 
 
+# Функция получения имени
 def get_name(message):
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
-    if message.text.isalpha() and len(message.text) >= 2:
+    if message.text.isalpha() and 2 <= len(message.text) <= 64:
         name = message.text.lower().capitalize().strip()
         # Проверка, зарегистрирован ли пользователь
         user_id = message.chat.id
@@ -285,17 +227,6 @@ def get_name(message):
 
         if existing_user:
             bot.send_message(user_id, "Чудово! Ви вже зареєстровані.")
-
-            markup = types.InlineKeyboardMarkup()
-            consultation_button = types.InlineKeyboardButton(
-                "Консультація", callback_data="consultation"
-            )
-            markup.add(consultation_button)
-            bot.send_message(
-                user_id,
-                "Для отримання консультації натисніть кнопку 'Консультація'.",
-                reply_markup=markup,
-            )
             return
         elif existing_user is None:
             cursor.execute(
@@ -312,16 +243,17 @@ def get_name(message):
     else:
         bot.send_message(
             message.chat.id,
-            "Введіть коректне ім'я (мінімум 2 літери, тільки букви).",
+            "Введіть ім'я тільки буквами та довжиною від 2 до 64 літер.",
         )
         bot.register_next_step_handler(message, get_name)
 
 
+# Функция получения фамилии
 def get_surname(message, name):
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
-    if message.text.isalpha() and len(message.text) >= 2:
+    if message.text.isalpha() and 2 <= len(message.text) <= 64:
         surname = message.text.lower().capitalize().strip()
 
         # Обновление фамилии пользователя в базе данных
@@ -339,11 +271,12 @@ def get_surname(message, name):
     else:
         bot.send_message(
             message.chat.id,
-            "Введіть правильне прізвище (мінімум 2 букви, тільки букви).",
+            "Введіть прізвище тільки буквами та довжиною від 2 до 64 літер.",
         )
         bot.register_next_step_handler(message, get_surname, name)
 
 
+# Функция склонения лет
 def declination_of_years(age):
     if 5 <= age <= 19:
         return "років"
@@ -357,6 +290,7 @@ def declination_of_years(age):
         return "років"
 
 
+# Функция получения возраста
 def get_age(message, name, surname):
     try:
         conn = sqlite3.connect(DB_CONNECTION_URL)
@@ -386,6 +320,7 @@ def get_age(message, name, surname):
         bot.register_next_step_handler(message, get_age, name, surname)
 
 
+# Функция получения города
 def get_city(message, name, surname, age):
     global city
 
@@ -394,9 +329,11 @@ def get_city(message, name, surname, age):
 
     city = " ".join(message.text.strip().title().split())
 
-    if city.replace(" ", "").isalpha() and len(city.split()) >= 1:
+    if city.replace(" ", "").isalpha() and 2 <= len(city) <= 64:
         user_id = message.chat.id
+
         cursor.execute("UPDATE users SET city=? WHERE user_id=?", (city, user_id))
+
         conn.commit()
         conn.close()
 
@@ -410,11 +347,12 @@ def get_city(message, name, surname, age):
     else:
         bot.send_message(
             message.chat.id,
-            "Будь ласка, введіть корректну назву міста. Наприклад: Київ.",
+            "Будь ласка, введіть назву міста (селища) тільки буквами та довжиною від 2 до 64 літер. Наприклад: Київ.",
         )
         bot.register_next_step_handler(message, get_city, name, surname, age)
 
 
+# Функция получения района
 def get_district(message, name, surname, age, city):
     global district
 
@@ -423,7 +361,11 @@ def get_district(message, name, surname, age, city):
 
     district = " ".join(message.text.strip().title().split())
 
-    if district.replace(" ", "").isalpha() and len(district.split()) >= 1:
+    if (
+        district.replace(" ", "").isalpha()
+        and len(district.split()) >= 1
+        and 2 <= len(district) <= 64
+    ):
         user_id = message.chat.id
         cursor.execute(
             "UPDATE users SET district=? WHERE user_id=?", (district, user_id)
@@ -441,11 +383,12 @@ def get_district(message, name, surname, age, city):
     else:
         bot.send_message(
             message.chat.id,
-            "Будь ласка, введіть корректну назву району.",
+            "Будь ласка, введіть назву району тільки буквами та довжиною від 2 до 64 літер.",
         )
         bot.register_next_step_handler(message, get_district, name, surname, age, city)
 
 
+# Функция получения адреса
 def get_address(
     message, name, surname, age, city, district, awaiting_confirmation=False
 ):
@@ -466,6 +409,7 @@ def get_address(
                 conn.close()
 
                 bot.send_message(message.chat.id, "Адресу успішно збережено.")
+
                 # Деактивируем кнопку "Ні"
                 bot.edit_message_reply_markup(message.chat.id, message.message_id)
             else:
@@ -479,7 +423,7 @@ def get_address(
 
         address = " ".join(message.text.strip().title().split())
 
-        if address.strip() and len(address.split()) >= 1:
+        if address.strip() and len(address.split()) >= 1 and len(address) <= 64:
             markup = types.InlineKeyboardMarkup()
             yes_button = types.InlineKeyboardButton("Так", callback_data="yes")
             no_button = types.InlineKeyboardButton(
@@ -497,11 +441,10 @@ def get_address(
 
             bot.send_message(message.chat.id, text=question, reply_markup=markup)
             return
-
     # Если что-то пошло не так, запрашиваем адрес заново
     bot.send_message(
         message.chat.id,
-        "Будь ласка, введіть адресу, щоб продовжити.",
+        "Будь ласка, введіть адресу довжиною не більше 64 символів.",
     )
     bot.register_next_step_handler(
         message,
@@ -509,9 +452,106 @@ def get_address(
     )
 
 
+# Обработчик нажатия на кнопку "Консультация"
+@bot.message_handler(func=lambda message: message.text == "🔍 Консультація")
+def consultation(message):
+    user_id = message.chat.id
+
+    if is_user_blacklisted(
+        user_id
+    ):  # Проверяем, не находится ли пользователь в черном списке
+        bot.send_message(
+            user_id,
+            "Ви не можете отримати консультацію.",
+        )
+        return
+    bot.send_message(
+        user_id,
+        "Тепер відправте свій контактний номер телефона, натиснув нижче кнопку 'Відправити мій контакт'.",
+        reply_markup=ReplyKeyboardMarkup(
+            resize_keyboard=True,
+            one_time_keyboard=False,
+        ).add(
+            KeyboardButton(
+                text="📞   Відправити мій контакт",
+                request_contact=True,
+            )
+        ),
+    )
+    bot.register_next_step_handler(message, get_contact)
+
+
 registration_status = {}  # Словарь для отслеживания статуса регистрации пользователей
 
 
+# Обработчик всех сообщений
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    try:
+        conn = sqlite3.connect(DB_CONNECTION_URL)
+        cursor = conn.cursor()
+
+        user_id = message.chat.id
+        cursor.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
+        existing_user = cursor.fetchone()
+
+        # Если сообщение пустое, игнорируем его
+        if not message.text:
+            return
+
+        # Если пользователь существует
+        if existing_user:
+            # Если пользователь не подтвердил регистрацию, отправляем сообщение о необходимости подтвердить регистрацию кнопкой "Так"
+            if message.text.strip() and not registration_status.get(user_id, False):
+                bot.send_message(
+                    user_id,
+                    "Будь ласка, підтвердіть реєстрацію, натиснувши кнопку 'Так'.",
+                    reply_markup=types.ReplyKeyboardMarkup(
+                        one_time_keyboard=True,
+                        resize_keyboard=True,
+                    ).add(types.KeyboardButton("")),
+                )
+                return
+
+            # Если пользователь не нажал кнопку "Консультация", но отправил текст, отправляем сообщение о необходимости нажать "Консультация"
+            if message.text.strip() and not message.text == "🔍 Консультація":
+                markup = types.ReplyKeyboardMarkup(
+                    row_width=1, resize_keyboard=True, one_time_keyboard=False
+                )
+                consultation_button = types.KeyboardButton("🔍 Консультація")
+                markup.add(consultation_button)
+                bot.send_message(
+                    user_id,
+                    "Спочатку натисніть кнопку 'Консультація', щоб продовжити.",
+                    reply_markup=markup,
+                )
+                return
+
+        # Если пользователь не существует или не подтвердил регистрацию, отправляем сообщение о необходимости регистрации
+        if not existing_user or (
+            existing_user and not registration_status.get(user_id, False)
+        ):
+            bot.send_message(
+                user_id,
+                "Спочатку потрібно зареєструватися. Натисніть кнопку 'Зареєструватися' для продовження.",
+            )
+            markup = types.ReplyKeyboardMarkup(
+                row_width=1, resize_keyboard=True, one_time_keyboard=False
+            )
+            registration_button = types.KeyboardButton("Зареєструватися")
+            markup.add(registration_button)
+            bot.send_message(
+                user_id,
+                "",
+                reply_markup=markup,
+            )
+            return
+
+    except Exception as e:
+        print(f"Помилка при обробці текстового повідомлення: {e}")
+
+
+# Обработчик callback-запросов
 @bot.callback_query_handler(func=lambda call: True)
 def callback_worker(call):
     user_id = call.message.chat.id
@@ -528,29 +568,28 @@ def callback_worker(call):
 
     if user_data:
         name, surname, age, city, district, address = user_data
+        if registration_status.get(user_id, False):
+            bot.send_message(user_id, "Ви вже зареєстровані!")
+            return
+
         if call.data == "yes":
             bot.send_message(
                 call.message.chat.id, "✅ Чудово! Ви успішно зареєстровані!"
             )
+            # Добавление кнопки "Консультация" после успешной регистрации
+            send_message_with_keyboard(user_id)
+
             get_num_registered_users()
 
-            markup = types.InlineKeyboardMarkup()
-            markup.add(
-                types.InlineKeyboardButton("Консультація", callback_data="consultation")
-            )
-
-            bot.send_message(
-                user_id,
-                "Для отримання консультації натисніть кнопку 'Консультація'.",
-                reply_markup=markup,
-            )
             registration_status[user_id] = (
                 True  # Установка статуса регистрации пользователя
             )
         elif call.data == "no" and not registration_status.get(user_id, False):
             conn = sqlite3.connect(DB_CONNECTION_URL)
             cursor = conn.cursor()
+
             cursor.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+
             conn.commit()
             conn.close()
 
@@ -559,39 +598,16 @@ def callback_worker(call):
                 "Пройдіть повторну реєстрацію. Натисніть кнопку Зареєструватися",
             )
             start(call.message)
-        elif call.data == "consultation":
-            if is_user_blacklisted(
-                user_id
-            ):  # Проверяем, не находится ли пользователь в черном списке
-                bot.send_message(
-                    user_id,
-                    "Ви не можете отримати консультацію.",
-                )
-                return
-            bot.send_message(
-                user_id,
-                "Тепер відправте свій контактний номер телефона, натиснув нижче кнопку 'Відправити мій контакт'.",
-                reply_markup=ReplyKeyboardMarkup(
-                    resize_keyboard=True,
-                    one_time_keyboard=True,
-                ).add(
-                    KeyboardButton(
-                        text="📞   Відправити мій контакт",
-                        request_contact=True,
-                    )
-                ),
-            )
-            bot.register_next_step_handler(call.message, get_contact)
     elif call.data == "registration":
         bot.send_message(
             user_id,
             "Введіть Ваше ім'я. Наприклад, Ілон.",
             reply_markup=types.ReplyKeyboardRemove(),  # Удаление клавиатуры
         )
-
         bot.register_next_step_handler(call.message, get_name)
 
 
+# Функция обработки получения контактной информации пользователя
 def get_contact(message):
     user_id = message.from_user.id
 
@@ -633,8 +649,10 @@ def get_contact(message):
                 )
             ),
         )
+        bot.register_next_step_handler(message, get_contact)
 
 
+# Функция обработки начала консультации
 def start_consultation(message):
     user_id = message.from_user.id
 
@@ -669,69 +687,11 @@ def start_consultation(message):
             "✅ Ваше повідомлення відправлено на консультацію.\nНаш адміністратор зв'яжеться з Вами.",
         )
 
-        bot.send_message(
-            user_id,
-            "Натисніть кнопку 'Консультація' для продовження спілкування.",
-            reply_markup=types.InlineKeyboardMarkup().add(
-                types.InlineKeyboardButton("Консультація", callback_data="consultation")
-            ),
-        )
+        send_message_with_keyboard(user_id)
     else:
         bot.send_message(
             user_id, "Ваш контакт відсутній. Будь ласка, відправте свій контакт ще раз."
         )
-
-
-# Функция для получения информации о всех пользователях
-def get_all_users_info():
-    conn = sqlite3.connect(DB_CONNECTION_URL)
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM users")
-    all_users_info = cursor.fetchall()
-
-    conn.close()
-
-    return all_users_info
-
-
-@bot.message_handler(commands=["get_all_users"])
-def handle_get_all_users(message):
-    user_id = message.chat.id
-
-    if str(user_id) == ADMIN_MY_ID:
-        all_users_info = get_all_users_info()
-
-        if all_users_info:
-
-            for user_info in all_users_info:
-                (
-                    user_id,
-                    first_name,
-                    last_name,
-                    age,
-                    city,
-                    district,
-                    address,
-                    user_contact,
-                    _,
-                ) = user_info
-
-                user_info_text = (
-                    f"User ID: {user_id}\n"
-                    f"Name: {first_name} {last_name}\n"
-                    f"Age: {age}\n"
-                    f"City: {city}\n"
-                    f"District: {district}\n"
-                    f"Address: {address}\n"
-                    f"User Contact: {user_contact}\n"
-                    "------------------------"
-                )
-                bot.send_message(ADMIN_MY_ID, user_info_text)
-        else:
-            bot.send_message(user_id, "Немає зареєстрованих користувачів.")
-    else:
-        bot.send_message(user_id, "У Вас немає доступу до цієї команди.")
 
 
 if __name__ == "__main__":

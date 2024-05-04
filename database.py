@@ -9,11 +9,13 @@ ADMIN_MY_ID = config("ADMIN_MY_ID")
 ADMIN_USER_ID = config("ADMIN_USER_ID")
 DB_CONNECTION_URL = config("DB_CONNECTION_URL")
 
+print(DB_CONNECTION_URL)
+
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 
+# Cоздание в БД таблицы "users"
 def create_tables():
-    
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
@@ -37,9 +39,20 @@ def create_tables():
     conn.close()
 
 
-# Добавление новой таблицы для черного списка в базу данных
+def check_db_connection_url():
+    if DB_CONNECTION_URL:
+        print("Переменная DB_CONNECTION_URL содержит данные:", DB_CONNECTION_URL)
+    else:
+        print("Переменная DB_CONNECTION_URL не содержит данных или не была найдена в файле.")
+
+
+# Проверяем наличие данных в переменной DB_CONNECTION_URL
+check_db_connection_url()
+
+
+# Функция добавления в БД новой таблицы для черного списка
 def create_blacklist_table():
-    
+
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
     cursor.execute(
@@ -52,8 +65,9 @@ def create_blacklist_table():
     conn.close()
 
 
+# Функция получения_количества_зарегистрированных_пользователей
 def get_num_registered_users():
-    
+
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
@@ -67,8 +81,9 @@ def get_num_registered_users():
     return num_users
 
 
+# Функция получения_идентификаторов_пользователей
 def get_user_ids():
-    
+
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
@@ -80,8 +95,9 @@ def get_user_ids():
     return [user_id[0] for user_id in user_ids]
 
 
+# Функция получения_всей_информации о пользователях
 def get_all_users_info():
-    
+
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
@@ -93,8 +109,9 @@ def get_all_users_info():
     return all_users_info
 
 
+#  Функция получения имен столбцов из таблицы "users"
 def get_column_names():
-    
+
     conn = sqlite3.connect(DB_CONNECTION_URL)
     cursor = conn.cursor()
 
