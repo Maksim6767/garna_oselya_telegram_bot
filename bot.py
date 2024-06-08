@@ -680,7 +680,7 @@ def start_consultation(message):
 
         bot.send_message(
             chat_id,
-            f"Користувач {name} {surname} з ID {user_id} запрошує консультацію. Його контактний номер: {decoded_contact}\n\nПовідомлення:\n\n{consultation_message}",
+            f"Користувач {name} {surname} за адресою {address} з ID {user_id} запрошує консультацію. Його контактний номер: {decoded_contact}\n\nПовідомлення:\n\n{consultation_message}",
         )
         bot.send_message(
             user_id,
