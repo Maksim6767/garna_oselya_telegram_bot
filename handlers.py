@@ -102,6 +102,7 @@ def handle_get_last_registered_users(message):
                     f"District: {district}\n"
                     f"Address: {address}\n"
                     f"User Contact: {user_contact}\n"
+                    f"Date Created User Contact: {registration_time}\n"
                     "------------------------"
                 )
                 bot.send_message(ADMIN_MY_ID, user_info_text)

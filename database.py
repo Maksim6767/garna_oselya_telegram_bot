@@ -32,7 +32,7 @@ def create_tables():
             address TEXT,
             user_id INTEGER,
             user_contact TEXT,
-            registration_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            registration_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
