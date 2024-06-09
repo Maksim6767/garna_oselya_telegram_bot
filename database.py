@@ -2,6 +2,7 @@ import telebot
 import sqlite3
 import base64
 
+from datetime import datetime
 from decouple import config
 
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN")
@@ -30,7 +31,8 @@ def create_tables():
             district TEXT,
             address TEXT,
             user_id INTEGER,
-            user_contact TEXT
+            user_contact TEXT,
+            registration_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         )
         """
     )
@@ -65,7 +67,7 @@ def create_blacklist_table():
     conn.close()
 
 
-# Функция получения_количества_зарегистрированных_пользователей
+# Функция получения количества зарегистрированных пользователей
 def get_num_registered_users():
 
     conn = sqlite3.connect(DB_CONNECTION_URL)
@@ -81,7 +83,7 @@ def get_num_registered_users():
     return num_users
 
 
-# Функция получения_идентификаторов_пользователей
+# Функция получения идентификаторов пользователей
 def get_user_ids():
 
     conn = sqlite3.connect(DB_CONNECTION_URL)
@@ -95,7 +97,7 @@ def get_user_ids():
     return [user_id[0] for user_id in user_ids]
 
 
-# Функция получения_всей_информации о пользователях
+# Функция получения всей информации о пользователях
 def get_all_users_info():
 
     conn = sqlite3.connect(DB_CONNECTION_URL)
@@ -107,6 +109,21 @@ def get_all_users_info():
     conn.close()
 
     return all_users_info
+
+
+# Функция получения информации о последних зарегистрированных пользователях
+def get_last_registered_users(limit=20):
+    conn = sqlite3.connect("user_data.db")
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT * FROM users ORDER BY registration_time DESC LIMIT ?", (limit,)
+    )
+    users_info = cursor.fetchall()
+
+    conn.close()
+
+    return users_info
 
 
 #  Функция получения имен столбцов из таблицы "users"

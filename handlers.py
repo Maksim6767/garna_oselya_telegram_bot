@@ -9,6 +9,7 @@ from database import (
     get_num_registered_users,
     get_user_ids,
     get_all_users_info,
+    get_last_registered_users,
     get_column_names,
 )
 
@@ -51,6 +52,45 @@ def handle_get_all_users(message):
                     district,
                     address,
                     user_contact,
+                    registration_time,
+                    _,
+                ) = user_info
+
+                user_info_text = (
+                    f"User ID: {user_id}\n"
+                    f"Name: {first_name} {last_name}\n"
+                    f"Age: {age}\n"
+                    f"City: {city}\n"
+                    f"District: {district}\n"
+                    f"Address: {address}\n"
+                    f"User Contact: {user_contact}\n"
+                    "------------------------"
+                )
+                bot.send_message(ADMIN_MY_ID, user_info_text)
+        else:
+            bot.send_message(user_id, "Немає зареєстрованих користувачів.")
+    else:
+        bot.send_message(user_id, "У Вас немає доступу до цієї команди.")
+
+
+# Функция обработки получения информации о последних зарегистрированных пользователях
+def handle_get_last_registered_users(message):
+    user_id = message.chat.id
+
+    if str(user_id) == ADMIN_MY_ID:
+        last_registered_users = get_last_registered_users()
+        if last_registered_users:
+            for user_info in last_registered_users:
+                (
+                    user_id,
+                    first_name,
+                    last_name,
+                    age,
+                    city,
+                    district,
+                    address,
+                    user_contact,
+                    registration_time,
                     _,
                 ) = user_info
 
@@ -169,6 +209,7 @@ def help_command(message):
             "/send_message - Розсилка повідомлення зареєстрованим користувачам\n"
         )
         help_text += "/get_all_users - Получити всіх зареєстрованих користувачів\n"
+        help_text += "/get_last_registered_users - Получити останніх зареєстрованих користувачів\n"
         help_text += "/blacklist_user - Додати користувача в чорний список\n"
         help_text += "/unblacklist_user - Видалити користувача з чорного списка\n"
         help_text += (

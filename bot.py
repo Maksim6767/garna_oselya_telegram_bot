@@ -11,11 +11,13 @@ from database import (
     create_blacklist_table,
     get_num_registered_users,
     get_all_users_info,
+    get_last_registered_users,
     get_column_names,
 )
 from handlers import (
     handle_get_registered_users,
     handle_get_all_users,
+    handle_get_last_registered_users,
     handle_send_message_to_users,
     process_send_message,
     handle_blacklist_user,
@@ -173,6 +175,14 @@ def get_all_users(message):
     user_id = message.chat.id
     send_message_with_keyboard(user_id)
     handle_get_all_users(message)
+
+
+# Определение обработчика команды get_last_registered_users
+@bot.message_handler(commands=["get_last_registered_users"])
+def get_last_registered_users(message):
+    user_id = message.chat.id
+    send_message_with_keyboard(user_id)
+    handle_get_last_registered_users(message)
 
 
 # Определение обработчика команды blacklist_user
